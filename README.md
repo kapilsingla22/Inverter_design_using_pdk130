@@ -18,13 +18,13 @@ Let's get right into it.
   - [1.2 PDK Setup](#12-PDK-setup)
 - [2. Analysis of MOSFET models](#2-Analysis-of-MOSFET-models)
   - [2.1 General MOS analysis](#21-General-MOS-analysis)
-  - [2.2 Strong 0 and Weak 1](#22-Strong-0-and-Weak-1)
-  - [2.3 Weak 0 and Strong 1](#23-Weak-0-and-Strong-1)
 - [3. CMOS Inverter Design and Analysis](#3-CMOS-Inverter-Design-and-Analysis)
   - [3.1 Why CMOS Circuits](#31-Why-CMOS-Circuits) 
-  - [3.2 CMOS Inverter Analysis(Pre-Layout)](#32-CMOS-Inverter-Analysis-Pre-Layout)
-    - [3.2.1 DC Analysis and Important design parameters](#321-DC-Analysis-and-Important-design-parameters)
-    - [3.2.2 DC Parametric Analysis](#322-DC-Parametric-Analysis)
+  - [3.2 Making cmos Symbol](#32-CMOS-Inverter-Analysis-Pre-Layout)
+    - [3.2.1 DC Analysis](#321-DC-Analysis-and-Important-design-parameters)
+    - [3.2.2 Noise Margin](#322-DC-Parametric-Analysis)
+    - [3.2.3 Delay Anaysis of our Inverter](#322-DC-Parametric-Analysis)3
+    - [3.2.4 Power Consumption](#322-DC-Parametric-Analysis)
 
 ## 1. Tools and PDK setup
 
@@ -112,11 +112,13 @@ $  [sudo] make install
 
 ### 2.1 General MOS Analysis
 
-In this section I start with analysis of MOSFET models present in sky130 pdk. I would be using the 1.8v transistor models. Below is the schematic I created in **Xschem**.
+In this section I start with pre-layout simulation i.e. analysis of MOSFET models present in sky130 pdk. I would be using the 1.8v transistor models. Below is the schematic I created in **Xschem**.
 <!--
 ___highly recommended to check out the tutorials of xschem [here](http://repo.hu/projects/xschem/xschem_man/xschem_man.html) and ngspice [here](http://ngspice.sourceforge.net/docs/ngspice-manual.pdf)___
 -->
-![NMOS CHAR SCHEMATIC](./Images/nfet_for_vgs_vs_ids.png)
+
+Here we are doing DC sweep and seeing how current looks like for different values of Vds.
+![NMOS CHAR SCHEMATIC](./Images/dc_sweep.png)
 
 The components used are:<br>
 ```nfet_01v8.sym``` - from xschem_sky130 library<br>
@@ -124,22 +126,24 @@ The components used are:<br>
 ```code_shown.sym``` - from xschem devices library<br>
 
 I used the above to plot the basic characteristic plots for an NMOS Transistor, That is ___Ids vs Vds___ and ___Ids vs Vgs___. To do that, just save the above circuit with the above mentioned specifications and component placement. After this just hit __Netlist__ then __Simulate__. ___ngspice___ would pop up and start doing the simulation based calculations. It will take time as all the libraries need to be called and attached to the simulation spice engine. Once that is done, you need to write a couple commands in the ngspice terminal:<br><br>
-```display``` - This would display all the vectors available for plotting and printing.<br>
+```display``` - This would display all the vectors available for plotting and printing. It basically shows all the voltages and current variables that are available in our circuit.<br>
 ```setplot``` - This would list all the set of plots available for this simulation.<br>
 _after this choose a plot by typing '''setplot <plot_name>'''. for example '''setplot tran1'''_<br>
 ```plot``` - to choose the vector to plot.<br>
-_example : plot -vds#branch_<br><br>
+_example : plot -voltageds#branch_<br><br>
 
-Then you must see the plot below you, if you did a DC sweep on the __VGS__ source for different values of __VDS__:<br>
-![Ids vs Vgs](./Images/nfet_Ids_vs_Vgs.png)<br><br>
+Then you must see the plot below you, if you did a DC sweep on the __VDS__ source for different values of __VGS__ means first time vgs will be 0.5 v and we get plot current Ids then our vgs is 1.0 and lastly 1.5v:<br>
 
-This definitely shows us that the threshold value is between __600mV to 700mV__ and I think I will be using ___650mV___ for my future calculations.
-Similarly, when I sweep __VDS__ source for different values of __VGS__, I get the below plot:<br>
+![Ids vs Vgs](./Images/ids_vs_vds_for_diff_vgs.png)<br><br>
 
-![Ids vs Vds](./Images/nfet_Ids_vs_Vds.png)<br><br>
+Similarly, when I sweep __VGS__ source for different values of __VDS__, I get the below plot:<br>
 
-Now the above two definitely looks like what the characteristics curves should, but now we need to choose a particular curve that we would do further analysis on.
+![Ids vs Vds](./Images/ids_vs_vgs_for_diff_vds.png)<br><br>
 
+This definitely shows us that the threshold value is between __650mV to 750mV__.
+
+Now the above two definitely looks like what the characteristics curves should.
+<!---
 I also did plot gm and go(or ro) values for the above mosfet. This would be crucial as we can obtain a lot of parameters from these values. Both of these below are for the general dc sweep we did above. 
 ![gm](./Images/nfet_gds.png)<br>
 ![go](./Images/nfet_go.png)<br>
@@ -179,80 +183,147 @@ The reasoning is the same as the previous section<br><br>
 ___Hence, neither NMOS nor PMOS would make a great inverter on their own. So a plethora of configurations were taken into account, but at the last, only one stands as the most popular format of circuit design using mosfets. It is referred to as a CMOS configuration___
 
 ---
-
+-->
 ## 3. CMOS Inverter Design and Analysis
 ### 3.1 Why CMOS Circuits
+We know that neither NMOS nor PMOS can be used for design that can produce either values, HIGH and LOW. But another thing that is worth notice is how they complement each other. This is what gave rise to an idea of attaching them together. Since, __PMOS__ is a __Strong 1__, we put it between VDD and Vout and __NMOS__ being a __STRONG 0__, it is placed between Vout and GND. This way, either can act as a load to the other transistor, since __both are never ON together__ in ideal case. This is referred to as __Complimentary Metal Oxide Semiconductor__(CMOS) Configuration and it also represents the simplest circuit known as the __CMOS Inverter__.<br><br>
 
-An interesting obseration was made in the previous section, where we realised that neither NMOS nor PMOS can be used for design that can produce either values, HIGH and LOW. But another thing that is worth notice is how they complement each other. This is what gave rise to an idea of attaching them together. Since, __PMOS__ is a __Strong 1__, we put it between VDD and Vout and __NMOS__ being a __STRONG 0__, it is placed between Vout and GND. This way, either can act as a load to the other transistor, since __both are never ON together__ (Are they?). The configuration looks like what we have below. This is referred to as __Complimentary Metal Oxide Semiconductor__(CMOS) Configuration and it also represents the simplest circuit known as the __CMOS Inverter__.<br><br>
-![CMOS Inverter](./Images/CMOS_Inverter_Schematic.png)<br>
+CMOS Circuits generally consists of a network split into two parts, Upper one referred to as a __pull up network__ and the lower half as a __pull down network__. The former consists of P-channel MOSFETs and later N-Channel MOSFETs. Reason is simple. As one transistor is on, another is off. This eliminates the issue of an resistive path to the ground and hence, no voltage division occurs(At least not a significant one). This way, one can easily achieve a Strong High and a Strong LOW from the same network. __PULL UP__ is what offers a low resistance path to the VDD and __PULL DOWN__ is what offers a low resistance path the GND.
 
-CMOS Circuits generally consists of a network split into two parts, Upper one referred to as a __pull up network__ and the lower half as a __pull down network__. The former consists of P-channel MOSFETs and later N-Channel MOSFETs. Reason is simple. As one transistor is one, another is off. This eliminates the issue of an resistive path to the ground and hence, no voltage division occurs(At least not a significant one). This way, one can easily achieve a Strong High and a Strong LOW from the same network. __PULL UP__ is what offers a low resistance path to the VDD and __PULL DOWN__ is what offers a low resistance path the GND.
 
-![pun_pdn](https://user-images.githubusercontent.com/43693407/143431624-72bece76-3d5a-41fd-bca7-d21beaecd977.gif)<br>
-
-### 3.2 CMOS Inverter Analysis Pre-Layout
-
+### 3.2 Making CMOS Symbol
+<!--
 Before, I start with the CMOS inverter,  I believe it is worth mentioning what an Inverter is. Inverter is something that inverts. In electronics it is very popularly explained as something that performs the __NOT__ logic, that is complements the input. So a __HIGH(1.8V)__ becomes __LOW(0V)__ and vice versa. Ideally, the output follows the input and there is no delay or propogation issues of the circuit. But in reality, an inverter can be a real piece of work. It can have serveral isseus like how fast can it react to the changes in the input, how much load can it tolerate before it's output breaks and so many more including noise, bandwidth, etc.
 
 All these parameters are what will always plague any analog design or design with transistor in general. Hence, with inverter many like to explore them all. So it justifies why Inverter is referred to as ___Hello World! of transistor level design___. Atleast, I say that :rofl:. So in this section that took me aeons to reach to, we finally start with all the important analysis and parameters to be evaluated for an Inverter. I first start with a schematic diagram, then I evaluate all the parameters, that is, measuring them, experimentin with them and reaching a conclusive value and Finally reach a schematic circuit that is capable of things we lay down at the beginning.
+-->
+First I have created a inverter circuit as shown below on right hand side and then convert it into its equivalent symbol be pressing key A in xschem as shown in left side.
 
-So I designed a Schematic of the Inverter, where the whole thing is based on what we determined earlier. I have chosen __(W/L) of PMOS = 4 times (W/L) of NMOS__ and __(W/L) of NMOS is 1/0.30 in microns__. I also designed a symbol of it, so that we can utilise that for further schematic creation.<br><br>
-![cmos_inverter_schematic](./Images/CMOS_inv_sch_and_sym.png)<br>
+![cmos_inverter_schematic](./Images/inv_and_symbol.png)<br>
 
+
+
+So I designed a Schematic of the Inverter, Now i have to test this symbol. I have chosen __(W/L) of PMOS = 2 times (W/L) of NMOS__ and __(W/L) of NMOS is 1/0.15 in microns__.
+<!--
 A lot of calculations will now start from this point. Similar to how we analysed for MOSFETs individually. Also from now on, ___(W/L)___ would be mentioned as ___S___ or ___Aspect Ratio___ Simply. We would use the following testbecnch for future analysis.(Transient and DC)<br>
 ![cmos_inv_tb](./Images/cmos_inv_tb.png)<br>
+-->
 
-#### 3.2.1 DC Analysis and Important design parameters
+#### 3.2.1 DC Analysis
 
-DC analysis would be used to plot a Voltage Transfer Characteristics (VTC) curve for the circuit. It will sweep the value of Vin from high to low to determine the  working of circuit with respect to different voltage levels in the input. The following plot is observed when simulated :<br>
-![cmos inverter vtc](./Images/cmos_inv_dc_anal.png)
+DC analysis would be used to plot a Voltage Transfer Characteristics (VTC) curve for the circuit. In future we do transient simulation to know rise time, fall time, Noise Margin, Power consumption. 
 
-A voltage transfer characteristics paints a plot that shows the behavior of a device when it's input is changed(full swing). It shows what happens to the output as input changes. In our case, for an inverter we can see a plot that is like a square wave(non ideal), that changes it's nature around 0.75 volts of input. So one can say that there are like 3 regions in the VTC curve, the portion where output is high, the place of transistion and the one where the output goes low. But actually there are __five regions of operation__ and they are based on the working of inverter constituents, that is the NMOS and the PMOS transistors with respect to the change in the input potential. <br>
-![inverter-operating-regions](https://user-images.githubusercontent.com/43693407/143764318-d0893545-f47c-44b8-a27c-8de8bc4f0759.jpg)
+So DC simulation will sweep the value of Vin from high to low to determine the  working of circuit with respect to different voltage levels in the input. 
 
-One can solve for them using the equations for individual transistors. Now it is time to talk about the important parameters of this device that are based off it's VTC curve.
+The following circuit is made for dc analysis :<br>
+![cmos inverter vtc](./Images/inv_test_dc.png)
+
+As we can see we are varying our vin from 0 to 1.8 volt at a step size of 1m volt. Now after saving the circuit we make its netlist and then simulate it. 
+
+Now we first plot vin vs vout and its graph is looking as :<br>
+![cmos inverter vtc](./Images/vin_vout_inv.png)
+
+As it is clearly visible from the plot that __vm__ value is not equal to 0.9v which is for ideal case because of the widths of Nmos and Pmos transistor.
+- As we start to increase the size of NMOS our pull down resistance starts to increase which will try to pull output low fast i.e our VTC curve will shift towards Left.
+- Similarly if we try to increase size of PMOS our Pull up resistance starts to increase which will try to pull output high fast i.e our VTC curve will shift towards Right.
+- So in our case we want __vn__ to be 0.9 means we want to shift our VTC curve towards right so for that we increase the size of PMOS.
+
+ As we can see in the following figure that as we increase the width of PMOS to 3.5 we get __vm__ value to be equal to 0.9v means we are moving to ideal case. But this will increase the area requirement of our inverter which is its limitation. <br>
+![cmos inverter vtc](./Images/vin_vout_ideal.png)
+ 
+
+#### 3.2.2 Noise Margin
+
+As we have get VTC of our inverter now we see where the gain is greater than 1 or -1. Until this range if we get noise we can tolerate it after this range it will get amplified and output will get distorted.
+
+In th following diagram we have apply some commands in simulation to find the gain first and then overlapping both the graphs to find out various values such as Vil, Vol, Vih, Voh.
+
+One can solve for them using the equations for individual transistors.
 - __VOH__ - Maximum output voltage when it is logic _'1'_.
 - __VOL__ - Minimun output voltage when it is logic _'0'_.
 - __VIH__ - Maximum input voltage that can be interpreted as logic _'0'_.
 - __VIL__ - Minimum input voltage that can be interpreted as logic _'1'_.
 - __Vth__ - Inverter Threshold voltage
+  
+The following plot is observed when simulated :<br>
+![cmos inverter vtc](./Images/nm.png)
+<!--
+A voltage transfer characteristics paints a plot that shows the behavior of a device when it's input is changed(full swing). It shows what happens to the output as input changes. In our case, for an inverter we can see a plot that is like a square wave(non ideal), that changes it's nature around 0.75 volts of input. So one can say that there are like 3 regions in the VTC curve, the portion where output is high, the place of transistion and the one where the output goes low. But actually there are __five regions of operation__ and they are based on the working of inverter constituents, that is the NMOS and the PMOS transistors with respect to the change in the input potential. <br>
+![inverter-operating-regions](https://user-images.githubusercontent.com/43693407/143764318-d0893545-f47c-44b8-a27c-8de8bc4f0759.jpg)
+-->
 
 Above five are critical for an Inverter and can be seen on the __VTC__ curve of an inverter. One thing to point out now would be,
 <p align=center><i><b>Vth should be at a value of VDD/2 for maximum noise margins</b></i></p> 
 
-And I tried to do that with our calculated inverter values at __l=300nm__ but guess what! It did not work at all. I know there has to be a reason for it, which I will try to investigate further, but as of now, I changed the device parameters to get __Vth__ close to the values __Vdd/2__. Now our __NMOS has S = 1.05/0.15__ and __PMOS has S = 2.1/0.15__. Below is it's simulation result using the same testbench.<br>
-![cmos_inv_vtc_150](./Images/cmos_inv_vtc_150.png)<br><br>
-
+<!--
 __VOH__ and __VOL__ are easy to determine as they are your aboslute values. In our case it is __1.8V__ and __0V__ respectively. For __Vih__ and __Vil__, we have another method. At __Vin__ = __VIH__, NMOS is in Saturation region and PMOS in Linear; while when __Vin__ = __VIL__, NMOS is in Linear and PMOS in Saturation. Another interesting thing about these points is that, _these are the points on the curve, when the magnitude of slope = 1_. So we can use ```measure``` commands to find them on the plot. In the plot shown below, look at the points that are at the intersection of the vout curve and the blue vertical line. These are our __VIH__ and __VIL__.<br>
 ![cmos_inv_vih_vil_plot](./Images/cmos_inv_vih_vil_plot.png)<br><br>
 
 And to calculate them, we use ```.meas``` statement with apt instructions. The result is down below.<br>
 ![cmos_inv_vih_vil_val](./Images/cmos_inv_vih_vil_val.png)<br><br>
 
-Look at the commands used carefully. The first lines declares a function, that I have used to see at what region is the derivative of Vout with respect to Vin greater than or equal to one. This has no significance other than visualizing what region is the one where transition occurs. After this I set the plot to dc1, which is the identifier for the first dc analysis done for the netlist. Then it was just plotting them all and using the measure statements to determine the values necessary.
+Look at the commands used carefully.--> The first lines declares a function, that I have used to see at what region is the derivative of Vout with respect to Vin greater than or equal to one. This has no significance other than visualizing what region is the one where transition occurs. Then it was just plotting them all and using the measure statements to determine the values necessary.
 
 Let's summarize the values obtained :
-| Voltage | Value |
-|---------|-------|
-| Vth_inv | 0.87V |
-|   VOH   | 1.8V  |
-|   VOL   |  0V   |
-|   VIH   | 0.98V |
-|   VIL   | 0.74V |
+| Voltage | Value  |
+|---------|------- |
+|   VOH   | 1.746V |
+|   VOL   | 0.069V |
+|   VIH   | 1.026V |
+|   VIL   | 0.775V |
 
 Now all the basic defining characteristics of an inverter are done. So we can find a couple more things and then proceed towards the transient analysis. Next is __Noise Margins__. Noise margins are defined as the range of values for which the device can work noise free or with high resistance to noise. This is an important parameter for digital circuits, since they work with a set of specific values(2 for binary systems), so it becomes crucial to know what values of the voltages can it sustain for each value. This range is also referred to as __Noise Immunity__. There are two such values of Noise margins for a binary system:<br>
 <b>NML(Noise Margin for Low) - VIL - VOL</b><br>
 <b>NMH(Noise Margin for HIGH) - VOH - VIH</b><br>
 
-So for our calculated values, the device would have, __NML = 0.74V__ and __NML = 0.82V__.
+So for our calculated values, the device would have, __NML = 0.706V__ and __NMH = 0.72V__.
 
-Now, they aren't equal. But if we were to take some more effort to get the values of Vth closet to Vdd/2 (0.9V), then we can get NML = NMH. But for our case they are close enough. Then a last parameter that is crucial for any design is the power it consumes. The __Power Dissipation__ of our inverter is given by __P = Vout * Id__, where Id is the drain current. I think I have not added a plot of the drain current yet. So let's do that below and calculate the power consumption of our inverter.<br>
+Now, they aren't equal. But if we were to take some more effort to get the values of Vth closet to Vdd/2 (0.9V), then we can get NML = NMH. 
+
+#### 3.2.3 Delay Anaysis of our Inverter
+
+In the following diagram we can see the propogation delay high to low and low to high as well as rise and fall time.
+![cmos_inv_curr_plot](./Images/delay.jpg)<br>
+
+Here we have to do transient analysis as we have to do analysis for delay and it is dependent on time.
+
+__Tphl__ and __Tplh__ are not equal if sizes of NMOS and PMOS are not equal.
+- As o/p goes from low to high i.e. charging PMOS is responsible.
+- As o/p goes from high to low i.e. discharging NMOS is responsible.
+
+In the following diagram we can see the calculation for tplh. Similarly we can do calculation for tphl. So avg of these voth can be used to get propogation delay.
+![cmos_inv_curr_plot](./Images/prop_delay.png)<br>
+
+- Now if we decrease the rise and fall time of __Input__ i.e we make input more steeper then we will see that our propogation delay will start to reduce.
+-  When we are having series of inverter then this propogation delay is a great tool to tell the dealy of the circuit.
+-  If we have something indivisual with some gate then rise time fall time makes more sense.
+
+Now to see independent delay of input we can see rise time and fall time as they are only dependent on time taken by output to go from 10% to 90% and vice versa respectively. 
+
+In the following diagram we can see the calculation for rise time. Similarly we can do calculation for fall time.
+![cmos_inv_curr_plot](./Images/rise.png)<br>
+
+
+To reduce the delay we have some methods. We do not have any external load capacitor we are having only internal capictors i.e we are calculating as of now __inloaded delay__.
+- We can increase the power which will reduce the rise and fall time. But power consumption increasing quadratically. So if we want only speed like in desktops where we can waste a lot of power so in that we can use this.
+-  Increase the size of our PMOS and NMOS then we expect that our rise and fall time should reduce but there is a little improvement in delay because we have unloaded inverter. As we increase the size our internal capacitors also increase in equal proportion so there is not much effect. If we put the load capacitance then yes we can get benifit by increasing the size of our NMOS and PMOS that we will see later on.
+
+We can see as we put load capacitor our vout will get to distort because we are taking more time n charging discharging.
+- So our rise and fall time increase because of increasing the load.
+- NOw if we decrease the load capacitance we can improve rise and fall delay.
+- If i increase size of nmos and pmos then also my rise and fall time will improve.
+- So conclusion is if we can't reduce our load cap or increase power then increase size for faster circuits.
+
+
+#### 3.2.4 Power Consumption
+
+Then a last parameter that is crucial for any design is the power it consumes. The __Power Dissipation__ of our inverter is given by __P = Vout * Id__, where Id is the drain current. I think I have not added a plot of the drain current yet. So let's do that below and calculate the power consumption of our inverter.<br>
 ![cmos_inv_curr_plot](./Images/cmos_inv_curr_plot.png)<br>
 ![cmos_inv_pdiss](./Images/cmos_inv_pdiss.png)<br><br>
 
 Hence, the total __Power Dissipation = 5.55u Watts__ for our device. Also, notice how current only spikes up when the transistion occurs. This region is referred to as __transition region__ and it's width is given by __(VIH - VIL) = 0.24V__. So there is almost __0 watts of power consumed!!!__ when the device is at __VOH__ or __VOL__, that is power only consumed when switching between states.
 
-
+<!--
 #### 3.2.2 DC Parametric Analysis
 Now, let's analyse the inverter with variations in it's design parameters, like __Width(W)__, __VDD__ and __Cload__. To write a parametric sweep, we have to write a script inside our netlist. Let's proceed.
 
@@ -278,3 +349,4 @@ plot dc1.vout vs vin dc2.vout vs vin dc3.vout vs vin dc4.vout vs vin dc5.vout vs
 
 The above ```control``` block would _sweep_ vdd from __1.8V__ and __0.3V__ in steps of __0.3V__, in __ngspice__ and do dc analysis for all of them. The below is the plot for the this [netlist](./xschem%20files/simulations/inv_dc_supply_variations.spice) <br><br>
 ![cmos_inv_vdd_variations](./Images/cmos_inv_vdd_variations.png)
+-->
