@@ -314,6 +314,7 @@ We can see as we put load capacitor our vout will get to distort because we are 
 - If i increase size of nmos and pmos then also my rise and fall time will improve.
 - So conclusion is if we can't reduce our load cap or increase power then increase size for faster circuits.
 
+<!--
 
 #### 3.2.4 Power Consumption
 
@@ -323,7 +324,6 @@ Then a last parameter that is crucial for any design is the power it consumes. T
 
 Hence, the total __Power Dissipation = 5.55u Watts__ for our device. Also, notice how current only spikes up when the transistion occurs. This region is referred to as __transition region__ and it's width is given by __(VIH - VIL) = 0.24V__. So there is almost __0 watts of power consumed!!!__ when the device is at __VOH__ or __VOL__, that is power only consumed when switching between states.
 
-<!--
 #### 3.2.2 DC Parametric Analysis
 Now, let's analyse the inverter with variations in it's design parameters, like __Width(W)__, __VDD__ and __Cload__. To write a parametric sweep, we have to write a script inside our netlist. Let's proceed.
 
