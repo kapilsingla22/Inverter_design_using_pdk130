@@ -7,9 +7,9 @@ In this project I have done experiment with working of an inverter and understan
 The whole process starts with analysis of _NMOS_ and _PMOS_ devices, specifically the 1.8v standard models available inside the pdk to determine a common working W/L ratio and also the gm, ron and similar values. After this we start with the design of a CMOS inverter that includes schematic, measurement of various parameters like delays, noise margin, risetime, falltime, etc.
 
 Let's get right into it. 
-
+<!--
 ![Inverter Design and Analysis](./Images/inverter_intro_picture.png)
-
+-->
 ---
 
 ## Contents
